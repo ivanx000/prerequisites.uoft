@@ -11,6 +11,7 @@ export default {
           blue: '#002A5C',
           gold: '#FFD700',
         },
+        accent: '#7B6CF6',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
