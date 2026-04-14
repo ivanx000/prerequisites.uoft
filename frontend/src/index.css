@@ -6,3 +6,17 @@
 .react-flow__renderer {
   background: transparent !important;
 }
+
+/* Animated blue glow for the focused search bar */
+@keyframes search-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(74, 144, 217, 0.4), 0 0 22px rgba(74, 144, 217, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(74, 144, 217, 0.55), 0 0 40px rgba(74, 144, 217, 0.7);
+  }
+}
+
+.search-bar-focused {
+  animation: search-glow-pulse 1.8s ease-in-out infinite;
+}

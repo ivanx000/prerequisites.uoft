@@ -6,6 +6,7 @@ export default function SearchBar({ onSearch, landing = false }) {
   const [input, setInput] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
 
   const [fetchSuggestions] = useLazyQuery(SEARCH_COURSES, {
     onCompleted: (data) => setSuggestions(data.courses ?? []),
@@ -63,21 +64,14 @@ export default function SearchBar({ onSearch, landing = false }) {
             onBlur={handleBlur}
             onFocus={() => input.length >= 2 && setShowSuggestions(true)}
             placeholder="Search for a Course..."
-            className="w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-800 text-sm outline-none transition"
+            className={`w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-800 text-sm outline-none ${isFocused ? 'search-bar-focused' : ''}`}
             style={{
               background: 'rgba(255,255,255,0.97)',
-              border: '1.5px solid #000000',
-              boxShadow: 'none',
+              border: 'none',
               fontSize: '15px',
             }}
-            onFocusCapture={e => {
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(74, 144, 217, 0.35), 0 0 14px rgba(74, 144, 217, 0.45)'
-              e.currentTarget.style.borderColor = '#4a90d9'
-            }}
-            onBlurCapture={e => {
-              e.currentTarget.style.boxShadow = 'none'
-              e.currentTarget.style.borderColor = '#000000'
-            }}
+            onFocusCapture={() => setIsFocused(true)}
+            onBlurCapture={() => setIsFocused(false)}
           />
         </form>
 
