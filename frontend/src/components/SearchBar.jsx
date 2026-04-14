@@ -50,8 +50,8 @@ export default function SearchBar({ onSearch, landing = false }) {
         <form onSubmit={handleSubmit} className="relative">
           {/* Magnifying glass icon */}
           <svg
-            className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
-            width="18" height="18" viewBox="0 0 24 24"
+            className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none"
+            width="20" height="20" viewBox="0 0 24 24"
             fill="none" stroke="rgba(100,100,120,0.5)" strokeWidth="2"
           >
             <circle cx="11" cy="11" r="8" />
@@ -64,11 +64,12 @@ export default function SearchBar({ onSearch, landing = false }) {
             onBlur={handleBlur}
             onFocus={() => input.length >= 2 && setShowSuggestions(true)}
             placeholder="Search for a Course..."
-            className={`w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-800 text-sm outline-none ${isFocused ? 'search-bar-focused' : ''}`}
+            className={`w-full pl-14 pr-5 py-5 rounded-2xl text-gray-800 outline-none ${isFocused ? 'search-bar-focused' : ''}`}
             style={{
               background: 'rgba(255,255,255,0.97)',
               border: 'none',
-              fontSize: '15px',
+              fontSize: '16px',
+              boxShadow: isFocused ? undefined : '0 2px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.07)',
             }}
             onFocusCapture={() => setIsFocused(true)}
             onBlurCapture={() => setIsFocused(false)}
