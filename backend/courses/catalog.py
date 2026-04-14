@@ -1,11 +1,25 @@
 import json
+import re
 from urllib import parse, request
+
+# Matches UofT course codes like CSC148H1, MAT237Y1, ECE344H1
+_COURSE_CODE_RE = re.compile(r'\b[A-Z]{2,4}\d{3}[HY]\d\b')
 
 
 def _fetch_json(url, timeout=4):
     req = request.Request(url, headers={'User-Agent': 'UofTree/1.0'})
     with request.urlopen(req, timeout=timeout) as response:
         return json.loads(response.read().decode('utf-8'))
+
+
+def extract_prerequisite_codes(text):
+    """
+    Parse a free-text prerequisite string and return the list of course codes
+    found within it.  E.g. "CSC148H1 or CSC150H1" → ['CSC148H1', 'CSC150H1'].
+    """
+    if not text:
+        return []
+    return _COURSE_CODE_RE.findall(text.upper())
 
 
 def _normalize_course(code, payload):
@@ -29,10 +43,21 @@ def _normalize_course(code, payload):
         or ''
     ).strip()
 
+    # The UofT timetable API stores prerequisites as a free-text field.
+    # We extract any course codes we can find in that text.
+    prereq_text = (
+        payload.get('prerequisite')
+        or payload.get('prerequisites')
+        or payload.get('prerequisiteDescription')
+        or payload.get('prereqDescription')
+        or ''
+    ).strip()
+
     return {
         'code': normalized_code,
         'name': name,
         'description': description,
+        'prerequisite_codes': extract_prerequisite_codes(prereq_text),
     }
 
 
@@ -49,7 +74,6 @@ def search_timetable_courses(query, session, timeout=4, limit=25):
     data = _fetch_json(url, timeout=timeout)
 
     results = []
-    # API returns a map keyed by course code.
     for code, payload in (data or {}).items():
         normalized = _normalize_course(code, payload)
         if not normalized:
@@ -79,3 +103,21 @@ def fetch_timetable_course_by_code(code, session, timeout=4):
             return normalized
 
     return None
+
+
+def fetch_timetable_courses_by_prefix(dept_prefix, session, timeout=10):
+    """
+    Fetch all courses matching a department prefix (e.g. 'CSC', 'MAT').
+    Returns the raw API payload dict keyed by course code so callers can
+    normalise themselves and avoid double network round-trips.
+    """
+    prefix = (dept_prefix or '').strip().upper()
+    if not prefix:
+        return {}
+
+    encoded = parse.urlencode({'code': prefix})
+    url = f'https://timetable.iit.artsci.utoronto.ca/api/{session}/courses?{encoded}'
+    try:
+        return _fetch_json(url, timeout=timeout) or {}
+    except Exception:
+        return {}

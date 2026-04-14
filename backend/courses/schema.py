@@ -30,6 +30,48 @@ class CourseType(DjangoObjectType):
         return self.prerequisites.all()
 
 
+def _prefetch_course(code):
+    """Return a Course from DB with 3-level prerequisite prefetch."""
+    return (
+        Course.objects
+        .prefetch_related(
+            'prerequisites',
+            'prerequisites__prerequisites',
+            'prerequisites__prerequisites__prerequisites',
+        )
+        .get(code=code)
+    )
+
+
+def _save_remote_course(remote):
+    """
+    Persist a course dict returned by the timetable API fallback.
+
+    • Creates the course if it doesn't exist yet (never overwrites existing
+      records so manually curated data is preserved).
+    • On first creation, wires up any prerequisites whose codes are already
+      present in the local database.
+    • Returns the db-backed Course with prerequisite prefetch applied.
+    """
+    course, created = Course.objects.get_or_create(
+        code=remote['code'],
+        defaults={
+            'name': remote['name'],
+            'description': remote['description'],
+        },
+    )
+
+    if created:
+        for prereq_code in remote.get('prerequisite_codes') or []:
+            try:
+                prereq = Course.objects.get(code=prereq_code)
+                course.prerequisites.add(prereq)
+            except Course.DoesNotExist:
+                pass  # prerequisite not imported yet — skip silently
+
+    return _prefetch_course(course.code)
+
+
 class Query(graphene.ObjectType):
     course = graphene.Field(
         CourseType,
@@ -44,15 +86,7 @@ class Query(graphene.ObjectType):
 
     def resolve_course(self, info, code):
         try:
-            return (
-                Course.objects
-                .prefetch_related(
-                    'prerequisites',
-                    'prerequisites__prerequisites',
-                    'prerequisites__prerequisites__prerequisites',
-                )
-                .get(code=code)
-            )
+            return _prefetch_course(code)
         except Course.DoesNotExist:
             if not settings.UOFT_TIMETABLE_FALLBACK_ENABLED:
                 return None
@@ -65,11 +99,7 @@ class Query(graphene.ObjectType):
             if not remote:
                 return None
 
-            return Course(
-                code=remote['code'],
-                name=remote['name'],
-                description=remote['description'],
-            )
+            return _save_remote_course(remote)
 
     def resolve_courses(self, info, search=''):
         q = (search or '').strip()
