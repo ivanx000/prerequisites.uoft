@@ -1,12 +1,12 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useLazyQuery } from '@apollo/client'
 import SearchBar from './components/SearchBar'
 import FlowVisualizer from './components/FlowVisualizer'
 import { GET_COURSE } from './graphql/queries'
+import bgVideo from './assets/14471921_3840_2160_30fps.mp4'
 
 export default function App() {
-  const [view, setView] = useState('landing') // 'landing' | 'results'
-  const [queriedCode, setQueriedCode] = useState(null)
+  const [queriedCode, setQueriedCode] = React.useState(null)
 
   const [fetchCourse, { loading, error, data }] = useLazyQuery(GET_COURSE, {
     fetchPolicy: 'cache-first',
@@ -17,110 +17,169 @@ export default function App() {
     if (!normalized) return
     setQueriedCode(normalized)
     fetchCourse({ variables: { code: normalized } })
-    setView('results')
-  }
-
-  function handleHome() {
-    setView('landing')
   }
 
   const course = data?.course
+  const hasCourse = !!course
 
   return (
-    <div className="min-h-screen flex flex-col font-sans" style={{ backgroundColor: '#ffffff' }}>
-      {/* Navigation Bar */}
-      <nav
-        className="w-full py-4 px-8"
-        style={{ backgroundColor: '#00205b' }}
+    <div className="font-sans" style={{ position: 'relative', minHeight: '100vh' }}>
+
+      {/* ── Video background ──────────────────────────────────────────────── */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        src={bgVideo}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
+        }}
+      />
+
+      {/* ── Gradient overlay ─────────────────────────────────────────────── */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(255, 255, 255, 0.78)',
+          zIndex: 1,
+        }}
+      />
+
+      {/* ── Content layer ────────────────────────────────────────────────── */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
       >
-        <div className="flex items-center justify-between pl-2">
-          <h1
-            className="text-white font-bold text-lg cursor-pointer select-none"
-            onClick={handleHome}
-          >
-            University of Toronto
-          </h1>
+        <main
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            padding: '0 1.5rem',
+          }}
+        >
+          {/* Spacer — collapses when a course is found, sliding everything up */}
+          <div
+            style={{
+              flexShrink: 0,
+              height: hasCourse ? '0' : 'calc(30vh - 80px)',
+              transition: 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          />
 
-          {view === 'results' && (
-            <div className="w-80">
-              <SearchBar onSearch={handleSearch} />
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {view === 'landing' ? (
-        /* ── Landing page ─────────────────────────────────────────────────── */
-        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 w-full">
-          <div className="w-full max-w-2xl text-center">
+          {/* Search + heading */}
+          <div style={{ width: '100%', maxWidth: '640px', margin: '0 auto' }}>
+            {/* Heading — fades out and collapses once a result appears */}
             <h1
-              className="font-bold leading-tight mb-8 text-center"
               style={{
                 fontSize: 'clamp(2rem, 4.2vw, 3.6rem)',
+                fontWeight: 700,
                 color: '#000000',
                 textAlign: 'center',
+                lineHeight: 1.15,
+                opacity: hasCourse ? 0 : 1,
+                maxHeight: hasCourse ? '0' : '120px',
+                marginBottom: hasCourse ? 0 : '2rem',
+                overflow: 'hidden',
+                transition: 'opacity 0.4s ease, max-height 0.6s ease, margin-bottom 0.4s ease',
               }}
             >
               Explore Course Prerequisites
             </h1>
 
-            <div className="w-full">
-              <SearchBar onSearch={handleSearch} landing />
-            </div>
+            <SearchBar onSearch={handleSearch} landing />
+          </div>
+
+          {/* Status messages */}
+          {loading && (
+            <p
+              style={{
+                textAlign: 'center',
+                marginTop: '2rem',
+                color: 'rgba(0,0,0,0.45)',
+                fontSize: '0.875rem',
+              }}
+            >
+              Loading <span style={{ fontFamily: 'monospace' }}>{queriedCode}</span>…
+            </p>
+          )}
+
+          {!loading && error && (
+            <p
+              style={{
+                textAlign: 'center',
+                marginTop: '2rem',
+                color: '#dc2626',
+                fontSize: '0.875rem',
+              }}
+            >
+              Could not load course. Please try again.
+            </p>
+          )}
+
+          {!loading && !error && data && !course && (
+            <p
+              style={{
+                textAlign: 'center',
+                marginTop: '2rem',
+                color: 'rgba(0,0,0,0.45)',
+                fontSize: '0.875rem',
+              }}
+            >
+              Course{' '}
+              <span style={{ fontFamily: 'monospace', color: '#b45309' }}>{queriedCode}</span>{' '}
+              was not found.
+            </p>
+          )}
+
+          {/* FlowVisualizer — fades in when course is ready */}
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '960px',
+              margin: '1.5rem auto 0',
+              opacity: hasCourse ? 1 : 0,
+              maxHeight: hasCourse ? '640px' : '0',
+              overflow: 'hidden',
+              transition: 'opacity 0.5s ease 0.3s, max-height 0.6s ease 0.2s',
+            }}
+          >
+            {course && (
+              <>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <p
+                    style={{
+                      fontFamily: 'monospace',
+                      fontWeight: 700,
+                      fontSize: '1.1rem',
+                      color: '#b45309',
+                    }}
+                  >
+                    {course.code}
+                  </p>
+                  <p style={{ fontSize: '0.875rem', color: 'rgba(0,0,0,0.6)', marginTop: '0.25rem' }}>
+                    {course.name}
+                  </p>
+                </div>
+                <FlowVisualizer courseData={course} />
+              </>
+            )}
           </div>
         </main>
-      ) : (
-        /* ── Results page ─────────────────────────────────────────────────── */
-        <main
-          className="flex-1 flex flex-col px-6 py-6"
-          style={{ backgroundColor: '#030712' }}
-        >
-          {/* Loading state */}
-          {loading && (
-            <div className="flex-1 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">
-                Loading <span className="font-mono text-yellow-400">{queriedCode}</span>…
-              </span>
-            </div>
-          )}
-
-          {/* Error state */}
-          {!loading && error && (
-            <div className="flex-1 flex items-center justify-center">
-              <span className="text-red-400 text-sm">
-                Could not load course. Please try again.
-              </span>
-            </div>
-          )}
-
-          {/* Not found state */}
-          {!loading && !error && data && !course && (
-            <div className="flex-1 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">
-                Course <span className="font-mono text-yellow-400">{queriedCode}</span> was not found.
-              </span>
-            </div>
-          )}
-
-          {/* Course found — show visualizer */}
-          {!loading && course && (
-            <>
-              <div className="mb-4">
-                <p className="font-mono font-bold text-yellow-400 text-lg leading-none">
-                  {course.code}
-                </p>
-                <p className="text-gray-300 text-sm mt-1">{course.name}</p>
-                {course.description && (
-                  <p className="text-gray-500 text-xs mt-2 max-w-2xl leading-relaxed">
-                    {course.description}
-                  </p>
-                )}
-              </div>
-              <FlowVisualizer courseData={course} />
-            </>
-          )}
-        </main>
-      )}
+      </div>
     </div>
   )
 }
