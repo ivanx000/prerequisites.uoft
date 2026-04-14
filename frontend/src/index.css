@@ -8,15 +8,15 @@
 }
 
 /* Animated blue glow for the focused search bar */
-@keyframes search-glow-pulse {
-  0%, 100% {
-    box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 3px rgba(74, 144, 217, 0.2), 0 0 14px rgba(74, 144, 217, 0.25);
-  }
-  50% {
-    box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 5px rgba(74, 144, 217, 0.3), 0 0 24px rgba(74, 144, 217, 0.38);
-  }
+/* Glow orbits around the search bar at constant colour/intensity */
+@keyframes search-glow-orbit {
+  0%   { box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 3px rgba(74,144,217,0.25), -14px  0px 24px 3px rgba(74,144,217,0.28); }
+  25%  { box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 3px rgba(74,144,217,0.25),   0px -6px 24px 3px rgba(74,144,217,0.28); }
+  50%  { box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 3px rgba(74,144,217,0.25),  14px  0px 24px 3px rgba(74,144,217,0.28); }
+  75%  { box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 3px rgba(74,144,217,0.25),   0px  6px 24px 3px rgba(74,144,217,0.28); }
+  100% { box-shadow: 0 2px 16px rgba(0,0,0,0.10), 0 0 0 3px rgba(74,144,217,0.25), -14px  0px 24px 3px rgba(74,144,217,0.28); }
 }
 
 .search-bar-focused {
-  animation: search-glow-pulse 2.2s ease-in-out infinite;
+  animation: search-glow-orbit 3s linear infinite;
 }
