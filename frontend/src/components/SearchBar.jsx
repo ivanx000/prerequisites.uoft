@@ -44,58 +44,100 @@ export default function SearchBar({ onSearch, landing = false }) {
   }
 
   if (landing) {
-    // Large white search bar matching the reference screenshot
+    const hasDropdown = showSuggestions && suggestions.length > 0
+    const limited = suggestions.slice(0, 5)
+
     return (
       <div className="relative w-full">
-        <form onSubmit={handleSubmit} className="relative">
-          {/* Magnifying glass icon */}
-          <svg
-            className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none"
-            width="20" height="20" viewBox="0 0 24 24"
-            fill="none" stroke="rgba(100,100,120,0.5)" strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            value={input}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={() => input.length >= 2 && setShowSuggestions(true)}
-            placeholder="Search for a Course..."
-            className={`w-full pl-14 pr-5 py-5 rounded-2xl text-gray-800 outline-none ${isFocused ? 'search-bar-focused' : ''}`}
-            style={{
-              background: 'rgba(255,255,255,0.97)',
-              border: 'none',
-              fontSize: '16px',
-              boxShadow: isFocused ? undefined : '0 2px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.07)',
-            }}
-            onFocusCapture={() => setIsFocused(true)}
-            onBlurCapture={() => setIsFocused(false)}
-          />
-        </form>
+        {/* Unified card: input + dropdown live inside one rounded container */}
+        <div
+          className={isFocused ? 'search-bar-focused' : ''}
+          style={{
+            background: 'rgba(255,255,255,0.97)',
+            borderRadius: hasDropdown ? '1.25rem 1.25rem 1.25rem 1.25rem' : '1rem',
+            boxShadow: isFocused ? undefined : '0 2px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.07)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Input row */}
+          <form onSubmit={handleSubmit} className="relative">
+            <svg
+              className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none"
+              width="20" height="20" viewBox="0 0 24 24"
+              fill="none" stroke="rgba(100,100,120,0.5)" strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={input}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={() => {
+                setIsFocused(true)
+                if (input.length >= 2) setShowSuggestions(true)
+              }}
+              onFocusCapture={() => setIsFocused(true)}
+              onBlurCapture={() => setIsFocused(false)}
+              placeholder="Search for a Course..."
+              className="w-full pl-14 pr-5 py-5 text-gray-800 outline-none"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                fontSize: '16px',
+                borderBottom: hasDropdown ? '1px solid rgba(0,0,0,0.08)' : 'none',
+              }}
+            />
+          </form>
 
-        {showSuggestions && suggestions.length > 0 && (
-          <ul
-            className="absolute z-50 mt-1 w-full rounded-xl overflow-hidden shadow-lg"
-            style={{ background: '#ffffff', border: '1px solid #e0e0e0' }}
-          >
-            {suggestions.map((c) => (
-              <li
-                key={c.code}
-                onMouseDown={() => handleSelect(c.code)}
-                className="px-4 py-2.5 cursor-pointer flex items-center gap-3 transition"
-                style={{ color: '#000000' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#e8f1ff'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          {/* Dropdown — seamlessly part of the same card */}
+          {hasDropdown && (
+            <div style={{ paddingBottom: '0.5rem' }}>
+              <p
+                style={{
+                  padding: '0.6rem 1.25rem 0.35rem',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0.07em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(0,0,0,0.38)',
+                }}
               >
-                <span className="font-mono text-sm shrink-0" style={{ color: '#0033a0' }}>{c.code}</span>
-                <span className="text-sm truncate" style={{ color: 'rgba(0,0,0,0.7)' }}>{c.name}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+                Courses
+              </p>
+              <ul>
+                {limited.map((c) => (
+                  <li
+                    key={c.code}
+                    onMouseDown={() => handleSelect(c.code)}
+                    className="cursor-pointer flex items-center gap-3 transition"
+                    style={{ padding: '0.55rem 1.25rem' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#ede9ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {/* Graduation cap icon */}
+                    <svg
+                      width="18" height="18" viewBox="0 0 24 24"
+                      fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8"
+                      strokeLinecap="round" strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                      <path d="M6 12v5c3.33 1.67 8.67 1.67 12 0v-5" />
+                    </svg>
+                    <span className="font-bold text-sm shrink-0" style={{ color: '#3d1f8a' }}>
+                      {c.code}
+                    </span>
+                    <span className="text-sm truncate" style={{ color: 'rgba(0,0,0,0.55)' }}>
+                      {c.name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
