@@ -86,7 +86,27 @@ class Query(graphene.ObjectType):
 
     def resolve_course(self, info, code):
         try:
-            return _prefetch_course(code)
+            course = _prefetch_course(code)
+            # If course is in DB but has no prerequisites, try to wire them from the API.
+            # This handles the case where the course was first fetched before its prereqs existed.
+            if not course.prerequisites.exists() and settings.UOFT_TIMETABLE_FALLBACK_ENABLED:
+                remote = fetch_timetable_course_by_code(
+                    code=code,
+                    session=settings.UOFT_TIMETABLE_SESSION,
+                    timeout=settings.UOFT_TIMETABLE_TIMEOUT_SECONDS,
+                )
+                if remote:
+                    linked = False
+                    for prereq_code in remote.get('prerequisite_codes') or []:
+                        try:
+                            prereq = Course.objects.get(code=prereq_code)
+                            course.prerequisites.add(prereq)
+                            linked = True
+                        except Course.DoesNotExist:
+                            pass
+                    if linked:
+                        return _prefetch_course(code)
+            return course
         except Course.DoesNotExist:
             if not settings.UOFT_TIMETABLE_FALLBACK_ENABLED:
                 return None
