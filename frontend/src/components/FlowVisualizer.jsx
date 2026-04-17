@@ -13,6 +13,9 @@ const NODE_WIDTH  = 188
 const NODE_HEIGHT = 76
 const PADDING     = 56
 
+// Invisible handle — purely for edge routing, no visible dot
+const invisibleHandle = { opacity: 0, width: 6, height: 6 }
+
 function CourseNode({ data }) {
   return (
     <div
@@ -31,14 +34,15 @@ function CourseNode({ data }) {
         boxShadow: '0 2px 10px rgba(0, 42, 92, 0.4)',
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: '#4a90d9', border: 'none', width: 8, height: 8 }} />
+      <Handle type="target" position={Position.Top}    style={invisibleHandle} />
       <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#ffffff', fontSize: '12px', lineHeight: 1 }}>
         {data.code}
       </span>
       <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '10px', lineHeight: 1.3, marginTop: '6px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxWidth: '160px' }}>
         {data.name}
       </span>
-      <Handle type="source" position={Position.Bottom} style={{ background: '#4a90d9', border: 'none', width: 8, height: 8 }} />
+      {/* Source handle only on non-leaf nodes so no phantom arrow stub appears */}
+      {data.isSource && <Handle type="source" position={Position.Bottom} style={invisibleHandle} />}
     </div>
   )
 }
@@ -48,7 +52,8 @@ const nodeTypes = { courseNode: CourseNode }
 function applyDagreLayout(nodes, edges) {
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'BT', ranksep: 90, nodesep: 48, marginx: 24, marginy: 24 })
+  // TB: prerequisites at top, searched course at bottom — arrows flow downward
+  g.setGraph({ rankdir: 'TB', ranksep: 90, nodesep: 48, marginx: 24, marginy: 24 })
   nodes.forEach(n => g.setNode(n.id, { width: NODE_WIDTH, height: NODE_HEIGHT }))
   edges.forEach(e => g.setEdge(e.source, e.target))
   dagre.layout(g)
@@ -61,9 +66,15 @@ function applyDagreLayout(nodes, edges) {
 function flattenCourse(course, nodes, edges, visited = new Set()) {
   if (visited.has(course.code)) return
   visited.add(course.code)
-  nodes.push({ id: course.code, type: 'courseNode', data: { code: course.code, name: course.name }, position: { x: 0, y: 0 } })
+  nodes.push({
+    id: course.code,
+    type: 'courseNode',
+    data: { code: course.code, name: course.name, isSource: false }, // isSource patched below
+    position: { x: 0, y: 0 },
+  })
   if (course.prerequisites && course.prerequisites.length > 0) {
     course.prerequisites.forEach(prereq => {
+      // Arrow: prereq (source/top) → course (target/bottom), pointing downward into course
       edges.push({
         id: `${prereq.code}→${course.code}`,
         source: prereq.code,
@@ -82,6 +93,11 @@ export default function FlowVisualizer({ courseData }) {
     const nodes = []
     const edges = []
     flattenCourse(courseData, nodes, edges)
+
+    // Mark which nodes are sources (have at least one outgoing edge)
+    const sourceCodes = new Set(edges.map(e => e.source))
+    nodes.forEach(n => { n.data.isSource = sourceCodes.has(n.id) })
+
     const laidOutNodes = applyDagreLayout(nodes, edges)
 
     if (laidOutNodes.length === 0) {
@@ -97,7 +113,6 @@ export default function FlowVisualizer({ courseData }) {
     const treeWidth  = maxX - minX
     const treeHeight = maxY - minY
 
-    // Center horizontally within the viewport
     const offsetX = Math.max(PADDING, (window.innerWidth - treeWidth) / 2) - minX
     const offsetY = PADDING - minY
 
