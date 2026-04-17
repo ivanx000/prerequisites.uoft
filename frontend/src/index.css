@@ -42,6 +42,24 @@ body::-webkit-scrollbar {
   animation: search-slide-down 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Tree slides up from below when first appearing */
+@keyframes tree-slide-up {
+  from { opacity: 0.6; transform: translateY(70px); }
+  to   { opacity: 1;   transform: translateY(0); }
+}
+.tree-slide-up {
+  animation: tree-slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Landing slides down from above when returning from tree */
+@keyframes landing-slide-down {
+  from { transform: translateY(-110vh); }
+  to   { transform: translateY(0); }
+}
+.landing-slide-down {
+  animation: landing-slide-down 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 /* Animated blue glow for the focused search bar */
 /* Glow orbits around the search bar at constant colour/intensity */
 @keyframes search-glow-orbit {

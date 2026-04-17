@@ -5,8 +5,8 @@ import FlowVisualizer from './components/FlowVisualizer'
 import { GET_COURSE } from './graphql/queries'
 import bgVideo from './assets/14471921_3840_2160_30fps.mp4'
 
-const EXIT_LANDING_MS = 320
-const EXIT_TREE_MS    = 450
+const EXIT_LANDING_MS = 600
+const EXIT_TREE_MS    = 600
 
 export default function App() {
   const [queriedCode, setQueriedCode]     = React.useState(null)
@@ -65,7 +65,7 @@ export default function App() {
   // Single return — background is always in the DOM so the video never
   // remounts (which caused the black flash between transitions).
   return (
-    <div className="font-sans" style={{ position: 'relative', minHeight: '100vh', overflow: exitingTree ? 'hidden' : undefined }}>
+    <div className="font-sans" style={{ position: 'relative', minHeight: '100vh', overflow: (exitingTree || exitingLanding) ? 'hidden' : undefined }}>
 
       {/* ── Background — never unmounts ──────────────────────────────────── */}
       <video
@@ -81,17 +81,27 @@ export default function App() {
 
             <div style={{ flexShrink: 0, height: 'calc(50vh - 110px)' }} />
 
-            <div style={{ width: '100%', maxWidth: '700px', margin: '0 auto' }}>
+            {/* Title + search slide together as one unit */}
+            <div
+              key={landingKey}
+              className={exitingTree && landingKey > 0 ? 'landing-slide-down' : ''}
+              style={{
+                width: '100%',
+                maxWidth: '700px',
+                margin: '0 auto',
+                ...(exitingLanding ? {
+                  transform: 'translateY(-110vh)',
+                  transition: `transform ${EXIT_LANDING_MS}ms cubic-bezier(0.4, 0, 1, 1)`,
+                } : {}),
+              }}
+            >
 
               <h1
-                className={landingKey > 0 && !exitingLanding ? 'title-fade-in' : ''}
                 style={{
                   fontWeight: 800,
                   lineHeight: 1.15,
                   textAlign: 'left',
                   marginBottom: '1.25rem',
-                  opacity: exitingLanding ? 0 : 1,
-                  transition: exitingLanding ? 'opacity 0.18s ease' : 'none',
                 }}
               >
                 <span style={{ display: 'block', fontSize: 'clamp(1.4rem, 2.6vw, 2.2rem)', color: '#000000' }}>
@@ -111,16 +121,7 @@ export default function App() {
                 </span>
               </h1>
 
-              <div
-                key={landingKey}
-                className={landingKey > 0 && !exitingLanding ? 'search-slide-down' : ''}
-                style={{
-                  transform: exitingLanding ? 'translateY(-110vh)' : 'translateY(0)',
-                  transition: exitingLanding ? `transform ${EXIT_LANDING_MS}ms cubic-bezier(0.4, 0, 1, 1)` : 'none',
-                }}
-              >
-                <SearchBar onSearch={handleSearch} landing />
-              </div>
+              <SearchBar onSearch={handleSearch} landing />
             </div>
 
             {loading && (
@@ -180,7 +181,7 @@ export default function App() {
           >
             ←
           </button>
-          <div className={exitingTree ? '' : 'tree-pop'}>
+          <div className={exitingTree ? '' : 'tree-slide-up'}>
             {displayCourse && <FlowVisualizer courseData={displayCourse} />}
           </div>
         </div>
