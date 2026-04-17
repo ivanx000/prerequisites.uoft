@@ -6,14 +6,14 @@ import ReactFlow, {
   Handle,
   Position,
 } from 'reactflow'
-import dagre from '@dagrejs/dagre'
 import 'reactflow/dist/style.css'
 
-const NODE_WIDTH  = 188
-const NODE_HEIGHT = 76
-const PADDING     = 56
+const NODE_WIDTH   = 188
+const NODE_HEIGHT  = 76
+const PADDING      = 56
+const SLOT_WIDTH   = NODE_WIDTH + 60   // 248px — horizontal space per leaf slot
+const LEVEL_HEIGHT = NODE_HEIGHT + 90  // 166px — vertical gap between levels
 
-// Invisible handle — purely for edge routing, no visible dot
 const invisibleHandle = { opacity: 0, width: 6, height: 6 }
 
 function CourseNode({ data }) {
@@ -41,7 +41,6 @@ function CourseNode({ data }) {
       <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '10px', lineHeight: 1.3, marginTop: '6px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxWidth: '160px' }}>
         {data.name}
       </span>
-      {/* Source handle only on non-leaf nodes so no phantom arrow stub appears */}
       {data.isSource && <Handle type="source" position={Position.Bottom} style={invisibleHandle} />}
     </div>
   )
@@ -49,19 +48,57 @@ function CourseNode({ data }) {
 
 const nodeTypes = { courseNode: CourseNode }
 
-function applyDagreLayout(nodes, edges) {
-  const g = new dagre.graphlib.Graph()
-  g.setDefaultEdgeLabel(() => ({}))
-  // TB: prerequisites at top, searched course at bottom — arrows flow downward
-  g.setGraph({ rankdir: 'TB', ranksep: 90, nodesep: 48, marginx: 24, marginy: 24 })
-  nodes.forEach(n => g.setNode(n.id, { width: NODE_WIDTH, height: NODE_HEIGHT }))
-  edges.forEach(e => g.setEdge(e.source, e.target))
-  dagre.layout(g)
-  return nodes.map(n => {
-    const pos = g.node(n.id)
-    return { ...n, position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 } }
+// ── Symmetric layout ─────────────────────────────────────────────────────────
+//
+// Each subtree is assigned a number of equal-width "slots". Siblings are
+// padded to the widest sibling's slot count, so every parent is centred over
+// its children and the whole tree is horizontally symmetric.
+
+function buildLayoutTree(course, visited = new Set()) {
+  if (visited.has(course.code)) return null
+  visited.add(course.code)
+  const children = (course.prerequisites || [])
+    .map(p => buildLayoutTree(p, visited))
+    .filter(Boolean)
+  return { code: course.code, children }
+}
+
+function getSlotWidth(node) {
+  if (!node.children.length) return 1
+  const maxChildSlots = Math.max(...node.children.map(getSlotWidth))
+  return node.children.length * maxChildSlots
+}
+
+function assignSlotPositions(node, slotStart, slotWidth, depth, out) {
+  out[node.code] = { x: slotStart + slotWidth / 2, y: depth }
+  if (!node.children.length) return
+  const maxChildSlots = Math.max(...node.children.map(getSlotWidth))
+  const totalChildSlots = node.children.length * maxChildSlots
+  const childrenStart = slotStart + (slotWidth - totalChildSlots) / 2
+  node.children.forEach((child, i) => {
+    assignSlotPositions(child, childrenStart + i * maxChildSlots, maxChildSlots, depth + 1, out)
   })
 }
+
+function applySymmetricLayout(courseData, nodes) {
+  const tree = buildLayoutTree(courseData)
+  const slotPositions = {}
+  assignSlotPositions(tree, 0, getSlotWidth(tree), 0, slotPositions)
+
+  return nodes.map(n => {
+    const p = slotPositions[n.id]
+    if (!p) return { ...n, position: { x: 0, y: 0 } }
+    return {
+      ...n,
+      position: {
+        x: p.x * SLOT_WIDTH - NODE_WIDTH / 2,
+        y: p.y * LEVEL_HEIGHT,
+      },
+    }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function flattenCourse(course, nodes, edges, visited = new Set()) {
   if (visited.has(course.code)) return
@@ -69,12 +106,11 @@ function flattenCourse(course, nodes, edges, visited = new Set()) {
   nodes.push({
     id: course.code,
     type: 'courseNode',
-    data: { code: course.code, name: course.name, isSource: false }, // isSource patched below
+    data: { code: course.code, name: course.name, isSource: false },
     position: { x: 0, y: 0 },
   })
   if (course.prerequisites && course.prerequisites.length > 0) {
     course.prerequisites.forEach(prereq => {
-      // Arrow: course (source/top) → prereq (target/bottom), pointing downward into prereqs
       edges.push({
         id: `${course.code}→${prereq.code}`,
         source: course.code,
@@ -94,37 +130,36 @@ export default function FlowVisualizer({ courseData }) {
     const edges = []
     flattenCourse(courseData, nodes, edges)
 
-    // Mark which nodes are sources (have at least one outgoing edge)
     const sourceCodes = new Set(edges.map(e => e.source))
     nodes.forEach(n => { n.data.isSource = sourceCodes.has(n.id) })
 
-    const laidOutNodes = applyDagreLayout(nodes, edges)
+    const laidOutNodes = applySymmetricLayout(courseData, nodes)
 
     if (laidOutNodes.length === 0) {
       return { initialNodes: [], initialEdges: [], containerHeight: window.innerHeight }
     }
 
-    const xs = laidOutNodes.map(n => n.position.x)
-    const ys = laidOutNodes.map(n => n.position.y)
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs) + NODE_WIDTH
-    const minY = Math.min(...ys)
-    const maxY = Math.max(...ys) + NODE_HEIGHT
-    const treeWidth  = maxX - minX
-    const treeHeight = maxY - minY
-
-    const offsetX = Math.max(PADDING, (window.innerWidth - treeWidth) / 2) - minX
-    const offsetY = PADDING - minY
+    // Centre the root node over the window centre; fall back to PADDING on left
+    const rootNode = laidOutNodes.find(n => n.id === courseData.code)
+    const rootCenterX = rootNode.position.x + NODE_WIDTH / 2
+    const allX = laidOutNodes.map(n => n.position.x)
+    const allY = laidOutNodes.map(n => n.position.y)
+    let offsetX = window.innerWidth / 2 - rootCenterX
+    const leftmostX = Math.min(...allX)
+    if (leftmostX + offsetX < PADDING) offsetX = PADDING - leftmostX
+    const offsetY = PADDING
 
     const centeredNodes = laidOutNodes.map(n => ({
       ...n,
       position: { x: n.position.x + offsetX, y: n.position.y + offsetY },
     }))
 
+    const maxY = Math.max(...allY)
+
     return {
       initialNodes: centeredNodes,
       initialEdges: edges,
-      containerHeight: Math.max(window.innerHeight, treeHeight + PADDING * 2),
+      containerHeight: Math.max(window.innerHeight, maxY + NODE_HEIGHT + PADDING * 2),
     }
   }, [courseData])
 
