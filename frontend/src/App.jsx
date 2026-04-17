@@ -23,17 +23,23 @@ export default function App() {
 
   const course = data?.course
 
-  // Trigger landing→tree whenever the expected course arrives.
-  // Using expectedCode (not just course?.code) means re-searching the same
-  // cached course also fires the transition.
+  // Step 1 — detect course arrival and start the exit animation.
+  // Split into two effects so the timer in step 2 survives React StrictMode's
+  // double-invocation (StrictMode cancels the first run's cleanup, but the
+  // second run of step 2 restarts the timer with the same viewState value).
   React.useEffect(() => {
     if (!course || course.code !== expectedCode || viewState !== 'landing') return
     setExpectedCode(null)
     setDisplayCourse(course)
     setViewState('exit-landing')
+  }, [course?.code, expectedCode, viewState])
+
+  // Step 2 — advance to 'tree' after the exit animation completes.
+  React.useEffect(() => {
+    if (viewState !== 'exit-landing') return
     const t = setTimeout(() => setViewState('tree'), EXIT_LANDING_MS)
     return () => clearTimeout(t)
-  }, [course?.code, expectedCode, viewState])
+  }, [viewState])
 
   function handleSearch(code) {
     const normalized = (code || '').trim().toUpperCase()
