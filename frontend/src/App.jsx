@@ -6,7 +6,7 @@ import { GET_COURSE } from './graphql/queries'
 import bgVideo from './assets/14471921_3840_2160_30fps.mp4'
 
 const EXIT_LANDING_MS = 320
-const EXIT_TREE_MS    = 200
+const EXIT_TREE_MS    = 450
 
 export default function App() {
   const [queriedCode, setQueriedCode]     = React.useState(null)
@@ -51,9 +51,9 @@ export default function App() {
 
   function handleBack() {
     setViewState('exit-tree')
+    setLandingKey(k => k + 1)   // start landing animation immediately, in parallel with tree exit
     setTimeout(() => {
       setViewState('landing')
-      setLandingKey(k => k + 1)
       setQueriedCode(null)
     }, EXIT_TREE_MS)
   }
@@ -65,7 +65,7 @@ export default function App() {
   // Single return — background is always in the DOM so the video never
   // remounts (which caused the black flash between transitions).
   return (
-    <div className="font-sans" style={{ position: 'relative', minHeight: '100vh' }}>
+    <div className="font-sans" style={{ position: 'relative', minHeight: '100vh', overflow: exitingTree ? 'hidden' : undefined }}>
 
       {/* ── Background — never unmounts ──────────────────────────────────── */}
       <video
@@ -74,8 +74,8 @@ export default function App() {
       />
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.52)', zIndex: 1 }} />
 
-      {/* ── Landing ──────────────────────────────────────────────────────── */}
-      {!showTree && (
+      {/* ── Landing — also rendered during exit-tree so it slides in simultaneously ── */}
+      {(!showTree || exitingTree) && (
         <div style={{ position: 'relative', zIndex: 2, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '0 1.5rem' }}>
 
@@ -145,7 +145,14 @@ export default function App() {
 
       {/* ── Tree ─────────────────────────────────────────────────────────── */}
       {showTree && (
-        <div style={{ position: 'relative', zIndex: 2 }}>
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 3,
+            transform: exitingTree ? 'translateY(100vh)' : 'translateY(0)',
+            transition: exitingTree ? `transform ${EXIT_TREE_MS}ms cubic-bezier(0.4, 0, 1, 1)` : 'none',
+          }}
+        >
           <button
             onClick={handleBack}
             aria-label="Go back"
@@ -154,11 +161,11 @@ export default function App() {
               top: 20,
               left: 20,
               zIndex: 10,
-              width: 40,
-              height: 40,
-              background: 'rgba(255,255,255,0.88)',
+              width: 44,
+              height: 44,
+              background: 'rgba(255,255,255,0.97)',
               color: '#002A5C',
-              border: '1.5px solid #4a90d9',
+              border: 'none',
               borderRadius: '50%',
               fontSize: '18px',
               cursor: 'pointer',
@@ -166,17 +173,14 @@ export default function App() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 2px 16px rgba(0,0,0,0.12), 0 0 14px 3px rgba(74,144,217,0.45)',
+              opacity: exitingTree ? 0 : 1,
+              transition: exitingTree ? 'opacity 0.15s ease' : 'none',
             }}
           >
             ←
           </button>
-          <div
-            className={exitingTree ? '' : 'tree-pop'}
-            style={{
-              opacity: exitingTree ? 0 : 1,
-              transition: exitingTree ? `opacity ${EXIT_TREE_MS}ms ease` : 'none',
-            }}
-          >
+          <div className={exitingTree ? '' : 'tree-pop'}>
             {displayCourse && <FlowVisualizer courseData={displayCourse} />}
           </div>
         </div>

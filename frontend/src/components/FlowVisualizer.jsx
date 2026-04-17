@@ -74,11 +74,11 @@ function flattenCourse(course, nodes, edges, visited = new Set()) {
   })
   if (course.prerequisites && course.prerequisites.length > 0) {
     course.prerequisites.forEach(prereq => {
-      // Arrow: prereq (source/top) → course (target/bottom), pointing downward into course
+      // Arrow: course (source/top) → prereq (target/bottom), pointing downward into prereqs
       edges.push({
-        id: `${prereq.code}→${course.code}`,
-        source: prereq.code,
-        target: course.code,
+        id: `${course.code}→${prereq.code}`,
+        source: course.code,
+        target: prereq.code,
         type: 'step',
         markerEnd: { type: MarkerType.ArrowClosed, color: '#4a90d9', width: 16, height: 16 },
         style: { stroke: '#4a90d9', strokeWidth: 2 },
