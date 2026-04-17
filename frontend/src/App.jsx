@@ -6,7 +6,8 @@ import { GET_COURSE } from './graphql/queries'
 import bgVideo from './assets/14471921_3840_2160_30fps.mp4'
 
 const EXIT_LANDING_MS = 650
-const EXIT_TREE_MS    = 750
+const TREE_SLIDE_MS   = 650   // how long the tree takes to exit
+const EXIT_TREE_MS    = 1350  // total: tree exit + landing enter
 
 export default function App() {
   const [queriedCode, setQueriedCode]     = React.useState(null)
@@ -151,7 +152,7 @@ export default function App() {
             position: 'relative',
             zIndex: 3,
             transform: exitingTree ? 'translateY(100vh)' : 'translateY(0)',
-            transition: exitingTree ? `transform ${EXIT_TREE_MS}ms cubic-bezier(0.4, 0, 1, 1)` : 'none',
+            transition: exitingTree ? `transform ${TREE_SLIDE_MS}ms cubic-bezier(0.4, 0, 1, 1)` : 'none',
           }}
         >
           <button
